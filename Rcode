@@ -1,0 +1,58 @@
+library(caret)
+library(tidyverse)
+library(splines)
+df <- read.csv("C:\\Users\\doodw\\Documents\\Grad School F2022\\CSCI550\\HW2\\ames.csv")
+sum(is.na(df$price))
+sum(is.na(df$Year.Built))
+model1 <- train(
+  price ~ Year.Built, 
+  df,
+  method = "lm",
+  trControl = trainControl(
+    method = "cv", 
+    number = 10,
+    verboseIter = TRUE
+  )
+)
+(model1$results$RMSE)^2
+
+df2 <- data.frame(df$Year.Built, df$price)
+
+# Smooth Spline
+
+#Randomly shuffle the data and split
+df3<-df[sample(nrow(df2)),] 
+folds <- cut(seq(1,nrow(df3)),breaks=10,labels=FALSE)
+
+sum <- 0
+
+#Perform 10 fold cross validation
+for(i in 1:10){
+  testIndexes <- which(folds==i,arr.ind=TRUE)
+  testData <- df3[testIndexes, ]
+  trainData <- df3[-testIndexes, ]
+  model2 <- smooth.spline(df3, y = NULL)
+  predicted <- predict(model2, testData$Year.Built)
+  sum <- sum + mean((testData$price - predicted$x)^2)
+}
+sum <- sum/10
+print(sum)
+
+# Polynomial spline
+sum <- 0
+plot(price ~ Year.Built, df)
+
+#Perform 10 fold cross validation
+for(i in 1:10){
+  testIndexes <- which(folds==i,arr.ind=TRUE)
+  testData <- df3[testIndexes, ]
+  trainData <- df3[-testIndexes, ]
+  model3 <-lm(price ~ bs(trainData$Year.Built,knots = c(1920,1960,2000)),data = trainData )
+  predicted <- predict(model3, testData, deriv = 0)
+  
+  sum <- sum + mean((testData$price - predicted)^2)
+}
+sum <- sum/10
+print(sum)
+
+
